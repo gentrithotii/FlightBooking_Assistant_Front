@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import { assistantConversation } from "../service/chatbot";
+import { assistantConversation } from "../service/chatbotService";
 
-const Chatbot = () => {
+const Chatbot = ({ fetchFlights }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -14,22 +15,35 @@ const Chatbot = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    const aiMessage = assistantConversation(userMessage.text);
+    setLoading(true);
 
-    console.log(aiMessage);
+    try {
+      const aiMessage = await assistantConversation(userMessage.text);
 
-    const botReply = {
-      sender: "bot",
-      text: aiMessage,
-    };
+      console.log(aiMessage);
 
-    setMessages((prev) => [...prev, botReply]);
+      const botReply = {
+        sender: "bot",
+        text: aiMessage,
+      };
+
+      setMessages((prev) => [...prev, botReply]);
+
+      await fetchFlights();
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "bot", text: "Sorry, something went wrong." },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
       className="d-flex flex-column border rounded shadow-sm mx-auto mt-4"
-      style={{ maxWidth: "1000px", height: "800px" }}
+      style={{ maxWidth: "800px", height: "700px" }}
     >
       <div className="flex-grow-1 overflow-auto p-3 bg-light">
         {messages.map((msg, idx) => (
@@ -50,13 +64,6 @@ const Chatbot = () => {
               style={{ maxWidth: "75%" }}
             >
               {msg.text}
-              {msg.hasBookOption && (
-                <div className="mt-2">
-                  <button className="btn btn-sm btn-success">
-                    <i className="bi bi-check-circle me-1"></i>Book
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         ))}
@@ -68,11 +75,27 @@ const Chatbot = () => {
           className="form-control me-2"
           placeholder="Ask about flights..."
           value={input}
+          disabled={loading}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         />
-        <button className="btn btn-primary" onClick={sendMessage}>
-          <i className="bi bi-send"></i>
+        <button
+          className="btn btn-primary"
+          onClick={sendMessage}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <span
+                className="spinner-grow spinner-grow-sm"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              <span className="visually-hidden">Loading...</span>
+            </>
+          ) : (
+            <i className="bi bi-send"></i>
+          )}
         </button>
       </div>
     </div>
